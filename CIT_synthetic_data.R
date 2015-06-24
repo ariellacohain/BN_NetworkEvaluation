@@ -213,4 +213,5 @@ output= cbind(output,cit_LTC)
 
 save(L,Cis,Trans,trios,output, file=paste("SimulatedData/",dataName,"/cit_results.RData",sep=""))
 
+#testing commit
 ### NEXT STEP IS TO THEN RUN PERMUTATIONS 
