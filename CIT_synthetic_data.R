@@ -1,3 +1,5 @@
+# cd /sc/orga/scratch/cohaia01/NetworkMethodsEvaluation; for data in `ls SimulatedData/ `; do echo $data;Rscript ~/thirdparty/BN_NetworkEvaluation/CIT_synthetic_data.R $data; done
+# cd /sc/orga/scratch/cohaia01/NetworkMethodsEvaluation; for data in `ls SimulatedData/ `; do echo $data;submitjob 1 -c 10 -m 2 -q low -P acc_STARNET Rscript ~/thirdparty/BN_NetworkEvaluation/CIT_synthetic_data.R $data; done
 rm(list=ls())
 options(stringsAsFactors = F)
 
@@ -16,6 +18,11 @@ cis_fdr_cutoff = 0.20
 trans_fdr_cutoff = 0.20
 cor_pval_cutoff = 0.05
 
+if_ran = try(load(paste("SimulatedData/",dataName,"/cit_results.RData",sep="")))
+if(!inherits(if_ran,"try-error")){
+  cat("RAN ALREADY!")
+  quit()
+}
 
 library(citpp)
 library(foreach)
