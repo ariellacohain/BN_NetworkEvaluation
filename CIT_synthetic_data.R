@@ -1,5 +1,5 @@
 # cd /sc/orga/scratch/cohaia01/NetworkMethodsEvaluation; for data in `ls SimulatedData/ `; do echo $data;Rscript ~/thirdparty/BN_NetworkEvaluation/CIT_synthetic_data.R $data; done
-# cd /sc/orga/scratch/cohaia01/NetworkMethodsEvaluation; for data in `ls SimulatedData/ `; do echo $data;submitjob 1 -c 10 -m 2 -q low -P acc_STARNET Rscript ~/thirdparty/BN_NetworkEvaluation/CIT_synthetic_data.R $data; done
+# cd /sc/orga/scratch/cohaia01/NetworkMethodsEvaluation; for data in `ls SimulatedData/ `; do echo $data;submitjob 2 -c 10 -m 2 -q low -P acc_STARNET Rscript ~/thirdparty/BN_NetworkEvaluation/CIT_synthetic_data.R $data; done
 rm(list=ls())
 options(stringsAsFactors = F)
 
@@ -224,9 +224,17 @@ trios$cor_rsqr = unlist(lapply(seq(1:nrow(trios)),function(x){
   correlations$cor.rsqr[correlations$Cis_gene == colnames(expr)[trios$cis_position[x]] & correlations$Trans_gene==colnames(expr)[trios$trans_position[x]]]
   }))
 
+cat("number of trios (pre filtering):",nrow(trios),"\n")
+if(sum(trios$cor_pval <= cor_pval_cutoff)>0){
+  trios = trios[trios$cor_pval <= cor_pval_cutoff,]
+  cat("removing correlation high trios")
+}else{
+  cat("all trios removed\n")
+  write.table("NO_TRIOS_LEFT",file=paste("SimulatedData/",dataName,"/NOcit_results.RData",sep=""))
+  q()
+}
 
-trios = trios[trios$cor_pval <= cor_pval_cutoff,]
-
+cat("number of trios (post filtering):",nrow(trios),"\n")
 output = cit(L,Cis,Trans, trios[,c(1,2,3)], threads = threads_cit)
 
 cat("cit finished.\n")
@@ -300,6 +308,8 @@ output$transQTL_fdr = sapply(1:nrow(output),function(x){
     sig_trans$gene == output$trans_gene[x]
   ] })
 
+save(L,Cis,Trans,trios,output, file=paste("SimulatedData/",dataName,"/Pre_cit_results.RData",sep=""))
+
 # cat("running REACTIVE cit (L->T->C)...\n")
 # cit_LTC = cit(L,Trans,Cis,trios[,c(1,3,2)],threads=threads)
 # colnames(cit_LTC)= paste(colnames(cit_LTC),"reactive",sep="_")
@@ -313,7 +323,7 @@ permute <- function(snp,gene1,gene2,ExprData, time = Sys.time(), maxit=50000,  n
   # rand_snps=sapply(1:n,function(X){snp[sample(seq(1:length(snp)))]})
   pos_gene2 = which(colnames(ExprData)==gene2)
   trans = ExprData[,pos_gene2]
-  L = sapply(snp, floor) #round or ceiling
+  L = sapply(snp, round) #round or ceiling
 
   shuffTrans = sapply(1:n, function(x){
     res = rep(Inf, length(trans))
@@ -337,19 +347,20 @@ permute <- function(snp,gene1,gene2,ExprData, time = Sys.time(), maxit=50000,  n
 }
 
 perm_pvals = c()
+time = as.numeric(Sys.time())
 for(i in 1:nrow(output)){
-  # if(i %% 10 ==0 ){
+  if(i %% 10 ==0 ){
 
     cat("on run",i, "out of",nrow(output),"\n")
-    print(Sys.time())
+    as.numeric(print(Sys.time()))
 
-  # }
+  }
   snp_i = snp[,c(output$snp_id[i])]
   gene1 = output$cis_gene[i]
   gene2 = output$trans_gene[i]
 
   #run permutation test on snp, gene1, gene2 - returns matrix from cit with N rows corresponding to the number permutations
-  permuted_res <- permute(snp_i,gene1,gene2,expr, maxit =50000, n = numPermTests,threads=perm_threads)
+  permuted_res <- permute(snp_i,gene1,gene2,expr,time = time, maxit =50000, n = numPermTests,threads=perm_threads)
 
   # calculating how many permuted tests are more significant than observed (b+1)/(N+1) where b = # permuted < observed
   permuted_pval = (sum(permuted_res$p_cit < output$p_cit[i])+1)/ (numPermTests  +1)
@@ -361,7 +372,7 @@ output$fdr = p.adjust(perm_pvals,"fdr")
 
 output$passSnpThresh = output$cond_pval <=0.05 | (output$cond_pval>0.05 & output$cond_pval_MaxGvnGwas >0.05) | output$snp_id == output$max_snp
 
-save(L,Cis,Trans,trios,output, file=paste("SimulatedData/",dataName,"/cit_results.RData",sep=""))
+save(L,Cis,Trans,trios,output,time, file=paste("SimulatedData/",dataName,"/cit_results.RData",sep=""))
 
 sig_output = output[output$p_cit_reactive >0.05 & output$passSnpThresh, ]
 write.table(sig_output,file = paste("SimulatedData/",dataName,"/cit_results_filtered.txt",sep=""))

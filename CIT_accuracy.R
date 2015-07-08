@@ -9,12 +9,19 @@ workingDir = "/sc/orga/scratch/cohaia01/NetworkMethodsEvaluation" #"~/Dropbox/Ne
 
 dataName = args[[1]]
 
+print(paste("On example ",dataName))
 #setting work directory
 setwd(workingDir)
 #loading Param 
 load("SimulatedDataParameters.RData")
 # str(Param)
 # dataName = "Simdata_0000000000000A" ### EDIT THIS OUT // JUST FOR TESTING
+
+a = try( b <-read.delim(paste("SimulatedData/",dataName,"/network_cit_added.txt",sep="")))
+if(!inherits(a,"try-error")){
+	print("---already ran!\n")
+	q()
+}
 
 genePos = read.delim(paste("SimulatedData/",dataName,"/genepos.txt",sep=""),header=T,sep=",")
 
